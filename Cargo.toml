@@ -1,0 +1,18 @@
+[package]
+name = "rrbg-web"
+version = "0.1.0"
+authors = ["Krakaw <41575888+Krakaw@users.noreply.github.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+#env_logger = "0.7.1"
+#log = "0.4.11"
+#thiserror = "1.0.21"
+rustc-serialize = "0.3"
+tokio = { version = "0.2", features = ["macros"] }
+tiny_http = "0.7.0"
+
+[target.arm-unknown-linux-gnueabihf.dependencies]
+rs_ws281x = { git  = "https://github.com/rpi-ws281x/rpi-ws281x-rust", branch = "master"}
