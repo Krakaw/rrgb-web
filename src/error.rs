@@ -4,6 +4,5 @@
 #[derive(Debug, Clone)]
 pub enum RrbgError {
     // #[error("Unknown error")]
-    Unknown
+    Unknown,
 }
-

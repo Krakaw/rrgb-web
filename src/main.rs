@@ -1,14 +1,13 @@
-mod server;
-pub mod error;
 mod controller;
+pub mod error;
+mod server;
 
-use crate::server::server::start;
 use crate::error::RrbgError;
+use crate::server::server::start;
 
 #[tokio::main]
 async fn main() -> Result<(), RrbgError> {
     start().await;
-
 
     Ok(())
 }

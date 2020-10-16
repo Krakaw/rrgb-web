@@ -1,83 +1,86 @@
-#[cfg(target_arch = "arm")]
-use rs_ws281x::Controller;
 use crate::error::RrbgError;
-use rustc_serialize::json::Json;
+use lazy_static::lazy_static;
+use std::collections::HashMap;
+use std::env;
+
+lazy_static! {
+    static ref DMA: i32 = env::var("DMA")
+        .unwrap_or("5".to_string())
+        .parse()
+        .unwrap_or(5);
+    static ref LED_COUNT: i32 = env::var("LED_COUNT")
+        .unwrap_or("32".to_string())
+        .parse()
+        .unwrap_or(32);
+    static ref BRIGHTNESS: u8 = env::var("BRIGHTNESS")
+        .unwrap_or("255".to_string())
+        .parse()
+        .unwrap_or(255);
+}
 
 pub struct ControllerInstance;
 
 impl ControllerInstance {
-
     #[cfg(target_arch = "arm")]
-    pub fn get_controller() ->  Option<rs_ws281x::Controller> {
+    pub fn get_controller() -> Option<rs_ws281x::Controller> {
         let mut controller = rs_ws281x::ControllerBuilder::new()
             // default
             .freq(800_000)
             // default
-            .dma(5)
+            .dma(*DMA)
             .channel(
                 0,
                 rs_ws281x::ChannelBuilder::new()
                     .pin(18)
-                    .count(32)
+                    .count(*LED_COUNT)
                     .strip_type(rs_ws281x::StripType::Ws2812)
-                    .brightness(255)
+                    .brightness(*BRIGHTNESS)
                     .build(),
             )
-            .build().unwrap();
+            .build()
+            .unwrap();
         Some(controller)
-
-    }
-
-    #[cfg(not(target_arch = "arm"))]
-    pub fn get_controller() -> Option<()> {
-       None
     }
 
     #[cfg(target_arch = "arm")]
     pub fn reset() {
         let mut controller = ControllerInstance::get_controller().unwrap();
         let mut leds = controller.leds_mut(0);
-        for i in 0..32 {
+        for i in 0..leds.len() {
             leds[i] = [0, 0, 0, 0];
         }
 
         controller.render();
     }
 
-
     #[cfg(not(target_arch = "arm"))]
-    pub async fn reset() {}
+    pub fn reset() {}
 
     #[cfg(target_arch = "arm")]
-    pub fn set_array(values: Json) -> Result<(), RrbgError> {
-
-        if let Some(patterns) = values.as_array() {
-            let mut controller = ControllerInstance::get_controller().unwrap();
-            let mut leds = controller.leds_mut(0);
-            for pattern in patterns {
-                eprintln!("pattern = {:?}", pattern);
-                let index = pattern.find("index").map(|r|r.as_u64().unwrap_or(0)).unwrap_or(0);
-                let r = pattern.find("r").map(|r|r.as_u64().unwrap_or(0)).unwrap_or(0);
-                let g = pattern.find("g").map(|g|g.as_u64().unwrap_or(0)).unwrap_or(0);
-                let b = pattern.find("b").map(|b|b.as_u64().unwrap_or(0)).unwrap_or(0);
-                eprintln!("{} {} {} {}", index, r, g, b);
-                leds[index as usize] = [b as u8, g as u8, r as u8, 0];
-                std::thread::sleep(150);
-                println!("Set led");
+    pub fn set_array(values: HashMap<usize, [u8; 4]>) -> Result<(), RrbgError> {
+        let mut controller = ControllerInstance::get_controller().unwrap();
+        let mut leds = controller.leds_mut(0);
+        for (index, pattern) in values.into_iter() {
+            let r = pattern[0];
+            let g = pattern[1];
+            let b = pattern[2];
+            let o = pattern[3];
+            eprintln!("i:{} r:{} g:{} b:{} o:{}", index, r, g, b, o);
+            if index < leds.len() {
+                leds[index] = [b, g, r, o];
             }
-            controller.render();
-            controller.wait();
+            // This sleep stops the leds being set incorrectly for some reason
+            std::thread::sleep(std::time::Duration::from_millis(10));
         }
-
+        std::thread::sleep(std::time::Duration::from_millis(150));
+        controller.render();
+        controller.wait();
 
         Ok(())
     }
 
-
     #[cfg(not(target_arch = "arm"))]
-    pub fn set_array( _values: Json) -> Result<(), RrbgError>{Ok(())}
+    pub fn set_array(_values: HashMap<usize, [u8; 4]>) -> Result<(), RrbgError> {
+        Ok(())
+    }
 }
-
-
-
-
