@@ -21,5 +21,8 @@ curl -X POST -d '{"values": {"0": [255,255,255,0]}}' localhost:8090
 curl -X PATCH -d '{"values": {"1": [255,0,0,0]}}' localhost:8090
 # Reset all
 curl -X DELETE localhost:8090
+# Use GET request to set single LED (without resetting others)
+# Set the first LED to green
+curl -X GET localhost:8090/0/0/255/0/0
 ```
 
