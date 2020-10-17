@@ -22,19 +22,50 @@ pub async fn start() -> Result<(), RrbgError> {
             Method::Delete => {
                 ControllerInstance::reset();
             }
-            Method::Post | Method::Patch => {
-                let mut content = String::new();
-                request.as_reader().read_to_string(&mut content).unwrap();
-                let request_led_values: LedValueRequest =
+            Method::Get | Method::Post | Method::Patch => {
+                let url = request.url().chars().skip(1).collect::<String>();
+                let query_params = url.split("/").collect::<Vec<&str>>();
+                let request_led_values: LedValueRequest = if query_params.len() > 1 {
+                    let mut values = HashMap::new();
+                    values.insert(
+                        query_params
+                            .get(0)
+                            .map(|v| v.parse::<usize>().unwrap_or(0))
+                            .unwrap_or(0),
+                        [
+                            query_params
+                                .get(1)
+                                .map(|v| v.parse::<u8>().unwrap_or(0))
+                                .unwrap_or(0),
+                            query_params
+                                .get(2)
+                                .map(|v| v.parse::<u8>().unwrap_or(0))
+                                .unwrap_or(0),
+                            query_params
+                                .get(3)
+                                .map(|v| v.parse::<u8>().unwrap_or(0))
+                                .unwrap_or(0),
+                            query_params
+                                .get(4)
+                                .map(|v| v.parse::<u8>().unwrap_or(0))
+                                .unwrap_or(0),
+                        ],
+                    );
+                    LedValueRequest { values }
+                } else {
+                    let mut content = String::new();
+                    request.as_reader().read_to_string(&mut content).unwrap();
                     json::decode(&content).unwrap_or(LedValueRequest {
                         ..LedValueRequest::default()
-                    });
+                    })
+                };
 
                 if request.method() == &Method::Post {
                     current_led_values = HashMap::new();
                 }
                 current_led_values =
                     merge_arrays(current_led_values.clone(), request_led_values.values);
+
                 ControllerInstance::set_array(current_led_values.clone());
             }
             _ => {}
