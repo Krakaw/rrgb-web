@@ -20,6 +20,7 @@ pub async fn start() -> Result<(), RrbgError> {
     for mut request in server.incoming_requests() {
         match request.method() {
             Method::Delete => {
+                current_led_values = HashMap::new();
                 ControllerInstance::reset();
             }
             Method::Get | Method::Post | Method::Patch => {
