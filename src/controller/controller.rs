@@ -54,7 +54,9 @@ impl ControllerInstance {
     }
 
     #[cfg(not(target_arch = "arm"))]
-    pub fn reset() {}
+    pub fn reset() {
+        println!("{} {} {}", *DMA, *LED_COUNT, *BRIGHTNESS);
+    }
 
     #[cfg(target_arch = "arm")]
     pub fn set_array(values: HashMap<usize, [u8; 4]>) -> Result<(), RrbgError> {
@@ -72,7 +74,7 @@ impl ControllerInstance {
             // This sleep stops the leds being set incorrectly for some reason
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
-        std::thread::sleep(std::time::Duration::from_millis(150));
+        std::thread::sleep(std::time::Duration::from_millis(10));
         controller.render();
         controller.wait();
 
