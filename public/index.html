@@ -16,7 +16,10 @@
             width: 32px;
             height: 32px;
             border: 1px solid black;
+        }
 
+        table#leds tr td.active {
+            border: 2px solid black;
         }
     </style>
     <title>RRGB-Web</title>
@@ -32,7 +35,6 @@
 
     </div>
     <div class="row">
-
         <input id="i" onkeyup="currentColors.i = event.target.value" type="number" placeholder="Index">
         <input id="r" onkeyup="currentColors.r = event.target.value" type="number" placeholder="Red">
         <input id="g" onkeyup="currentColors.g = event.target.value" type="number" placeholder="Green">
@@ -46,22 +48,29 @@
     const table = document.querySelector('#leds tbody');
     table.addEventListener('click', e => {
         currentColors.i = e.target.id;
-        const [r = 0, g = 0, b = 0] = ledDisplay[currentColors.i];
+        const [r = 0, g = 0, b = 0] = ledDisplay[currentColors.i] || [];
         currentColors.r = parseInt(r) || 0;
         currentColors.g = parseInt(g) || 0;
         currentColors.b = parseInt(b) || 0;
 
     })
-    let currentColors;
     let ledDisplay = {};
+    let currentColors = {};
     let timeout;
     let setDebounce;
+
+    setCurrentColors()
+    renderLeds()
+    startPolling();
 
     function setCurrentColors(colors = {i: 0, r: 0, g: 0, b: 0}) {
         currentColors = new Proxy(colors, {
             set: function (target, key, value) {
                 target[key] = parseInt(value) || 0;
                 document.getElementById(key).value = value;
+                if (key === 'i') {
+                    renderLeds()
+                }
                 clearTimeout(setDebounce)
                 setDebounce = setTimeout(() => {
                     const {i, r, b, g} = currentColors;
@@ -73,23 +82,16 @@
         })
     }
 
-    setCurrentColors()
-    renderLeds()
-    startPolling();
-
     function startPolling() {
         timeout = setInterval(() => {
-            console.log(currentColors)
             fetch("/").then(r => r.json()).then(r => {
                 ledDisplay = r;
                 renderLeds()
             })
-            // startPolling();
         }, 1000);
     }
 
     function renderLeds(rowCount = 4) {
-
         table.innerHTML = '';
         const colCount = Math.floor(ledCount / rowCount);
         for (let i = 0; i < rowCount; i++) {
@@ -98,6 +100,7 @@
             for (let j = 0; j < colCount; j++) {
                 const col = document.createElement('td');
                 col.id = `${j + (colCount * i)}`;
+                col.className = col.id == currentColors['i'] ? 'active' : '';
                 if (ledDisplay[col.id]) {
                     const [r, g, b] = ledDisplay[col.id];
                     if (r + g + b !== 0) {
