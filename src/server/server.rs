@@ -4,6 +4,7 @@ use rustc_serialize::json::{self};
 use std::collections::HashMap;
 use std::env;
 use std::io::Cursor;
+use std::str::FromStr;
 use tiny_http::{Method, Response};
 
 #[derive(RustcDecodable, RustcEncodable, Default, Debug)]
@@ -22,6 +23,16 @@ fn respond_html(led_count: i32) -> Response<Cursor<Vec<u8>>> {
     response
 }
 
+fn extract_int<T>(values: &Vec<&str>, get_index: usize, default: T) -> T
+where
+    T: FromStr + Clone,
+{
+    values
+        .get(get_index)
+        .map(|v| v.parse::<T>().unwrap_or(default.clone()))
+        .unwrap_or(default)
+}
+
 pub async fn start() -> Result<(), RrbgError> {
     let led_count = env::var("LED_COUNT")
         .unwrap_or("32".to_string())
@@ -33,69 +44,54 @@ pub async fn start() -> Result<(), RrbgError> {
     let server = tiny_http::Server::http(server_addr).unwrap();
     let mut current_led_values: HashMap<usize, [u8; 4]> = HashMap::new();
     for mut request in server.incoming_requests() {
-        if request.url() == "/index.html" {
-            let response = respond_html(led_count);
-            request.respond(response);
-        } else {
-            match request.method() {
-                Method::Delete => {
-                    current_led_values = HashMap::new();
-                    ControllerInstance::reset();
-                }
-                Method::Get | Method::Post | Method::Patch => {
-                    let url = request.url();
-                    if !(url == "/" && request.method() == &Method::Get) {
-                        let url = url.chars().skip(1).collect::<String>();
-                        let query_params = url.split("/").collect::<Vec<&str>>();
-                        let request_led_values: LedValueRequest = if query_params.len() > 1 {
-                            let mut values = HashMap::new();
-                            values.insert(
-                                query_params
-                                    .get(0)
-                                    .map(|v| v.parse::<usize>().unwrap_or(0))
-                                    .unwrap_or(0),
-                                [
-                                    query_params
-                                        .get(1)
-                                        .map(|v| v.parse::<u8>().unwrap_or(0))
-                                        .unwrap_or(0),
-                                    query_params
-                                        .get(2)
-                                        .map(|v| v.parse::<u8>().unwrap_or(0))
-                                        .unwrap_or(0),
-                                    query_params
-                                        .get(3)
-                                        .map(|v| v.parse::<u8>().unwrap_or(0))
-                                        .unwrap_or(0),
-                                    query_params
-                                        .get(4)
-                                        .map(|v| v.parse::<u8>().unwrap_or(0))
-                                        .unwrap_or(0),
-                                ],
-                            );
-                            LedValueRequest { values }
-                        } else {
-                            let mut content = String::new();
-                            request.as_reader().read_to_string(&mut content).unwrap();
-                            json::decode(&content).unwrap_or(LedValueRequest {
-                                ..LedValueRequest::default()
-                            })
-                        };
-
-                        if request.method() == &Method::Post {
-                            current_led_values = HashMap::new();
-                        }
-                        current_led_values =
-                            merge_arrays(current_led_values.clone(), request_led_values.values);
-
-                        ControllerInstance::set_array(current_led_values.clone());
+        current_led_values = match request.method() {
+            Method::Post | Method::Delete => HashMap::new(),
+            _ => current_led_values,
+        };
+        let response = match request.url() {
+            "/index.html" => respond_html(led_count),
+            _ => {
+                match request.method() {
+                    Method::Delete => {
+                        ControllerInstance::reset();
                     }
-                }
-                _ => {}
-            };
-            let response = Response::from_string(json::encode(&current_led_values).unwrap());
-            request.respond(response);
-        }
+                    Method::Get | Method::Post | Method::Patch => {
+                        let url = request.url();
+                        if !(url == "/" && request.method() == &Method::Get) {
+                            let url = url.chars().skip(1).collect::<String>();
+                            let query_params = url.split("/").collect::<Vec<&str>>();
+                            let request_led_values: LedValueRequest = if query_params.len() > 1 {
+                                let mut values = HashMap::new();
+                                values.insert(
+                                    extract_int(&query_params, 0, 0),
+                                    [
+                                        extract_int(&query_params, 1, 0u8),
+                                        extract_int(&query_params, 2, 0u8),
+                                        extract_int(&query_params, 3, 0u8),
+                                        extract_int(&query_params, 4, 0u8),
+                                    ],
+                                );
+                                LedValueRequest { values }
+                            } else {
+                                let mut content = String::new();
+                                request.as_reader().read_to_string(&mut content).unwrap();
+                                json::decode(&content).unwrap_or(LedValueRequest {
+                                    ..LedValueRequest::default()
+                                })
+                            };
+
+                            current_led_values =
+                                merge_arrays(current_led_values.clone(), request_led_values.values);
+
+                            ControllerInstance::set_array(current_led_values.clone());
+                        }
+                    }
+                    _ => {}
+                };
+                Response::from_string(json::encode(&current_led_values).unwrap())
+            }
+        };
+        request.respond(response);
     }
     Ok(())
 }
