@@ -5,44 +5,69 @@
     <meta name="viewport"
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css"
-          integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
     <style>
+        .container {
+            height:100vh; display: flex;  justify-content: center; align-content: center;
+        }
+        .container .panel {
+            width: 283px;
+            overflow: visible;
+            display: flex;
+            flex-direction: column;
+            align-content: center;
+            justify-content: center;
+        }
+
         table#leds {
-            transform: rotate(-180deg);
+            border-collapse: collapse;
+            box-shadow: black 2px 2px;
         }
 
         table#leds tr td {
             width: 32px;
             height: 32px;
             border: 1px solid black;
+            text-align: center;
         }
 
         table#leds tr td.active {
             border: 2px solid black;
         }
+        .inputs {
+            display: flex;
+            justify-content: center;
+        }
+        .inputs > input {
+            width: 65px;
+        }
     </style>
     <title>RRGB-Web</title>
 </head>
 <body>
-<div class="container-fluid">
-    <div class="row">
-        <div class="col">
+<div class="container">
+
+    <div class="panel">
+        <div style="display: flex;justify-content: center; ">
             <table id="leds">
                 <tbody></tbody>
             </table>
         </div>
 
+        <div class="inputs">
+            <input id="i" onkeyup="currentColors.i = event.target.value" type="number" placeholder="Index">
+            <input id="r" onkeyup="currentColors.r = event.target.value" type="number" placeholder="Red">
+            <input id="g" onkeyup="currentColors.g = event.target.value" type="number" placeholder="Green">
+            <input id="b" onkeyup="currentColors.b = event.target.value" type="number" placeholder="Blue">
+        </div>
+        <div class="inputs">
+            <button onclick="reset()">Reset</button>
+        </div>
     </div>
-    <div class="row">
-        <input id="i" onkeyup="currentColors.i = event.target.value" type="number" placeholder="Index">
-        <input id="r" onkeyup="currentColors.r = event.target.value" type="number" placeholder="Red">
-        <input id="g" onkeyup="currentColors.g = event.target.value" type="number" placeholder="Green">
-        <input id="b" onkeyup="currentColors.b = event.target.value" type="number" placeholder="Blue">
-    </div>
-
 
 </div>
+
+
+
 <script>
     const ledCount = parseInt('__LED_COUNT__') || 32;
     const table = document.querySelector('#leds tbody');
@@ -91,16 +116,21 @@
         }, 1000);
     }
 
+    function reset() {
+        fetch('', {method: 'DELETE'}).finally(() => {console.log('Reset')})
+    }
     function renderLeds(rowCount = 4) {
         table.innerHTML = '';
         const colCount = Math.floor(ledCount / rowCount);
-        for (let i = 0; i < rowCount; i++) {
+        let total = colCount * rowCount;
+        for (let i = rowCount; i > 0 ; i--) {
             const row = document.createElement('tr');
             table.appendChild(row);
-            for (let j = 0; j < colCount; j++) {
+            for (let j = colCount; j > 0; j--) {
                 const col = document.createElement('td');
-                col.id = `${j + (colCount * i)}`;
+                col.id = `${--total}`;
                 col.className = col.id == currentColors['i'] ? 'active' : '';
+                col.innerText = col.id;
                 if (ledDisplay[col.id]) {
                     const [r, g, b] = ledDisplay[col.id];
                     if (r + g + b !== 0) {
