@@ -14,8 +14,8 @@ pub struct LedValueRequest {
 
 #[derive(RustcDecodable, RustcEncodable, Default, Debug, Clone)]
 pub struct LedValue {
-    name: Option<String>,
-    rgb: [u8; 4],
+    pub name: Option<String>,
+    pub rgb: [u8; 4],
 }
 
 fn respond_html(led_count: i32) -> Response<Cursor<Vec<u8>>> {
