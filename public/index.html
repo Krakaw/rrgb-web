@@ -132,7 +132,8 @@
                 col.className = col.id == currentColors['i'] ? 'active' : '';
                 col.innerText = col.id;
                 if (ledDisplay[col.id]) {
-                    const [r, g, b] = ledDisplay[col.id];
+                    const [r, g, b] = ledDisplay[col.id].rgb;
+                    col.title = ledDisplay[col.id].name;
                     if (r + g + b !== 0) {
                         col.style.backgroundColor = `rgb(${r}, ${g}, ${b})`
                     }
