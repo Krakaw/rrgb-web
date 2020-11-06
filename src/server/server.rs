@@ -9,7 +9,13 @@ use tiny_http::{Method, Response};
 
 #[derive(RustcDecodable, RustcEncodable, Default, Debug)]
 pub struct LedValueRequest {
-    values: HashMap<usize, [u8; 4]>,
+    values: HashMap<usize, LedValue>,
+}
+
+#[derive(RustcDecodable, RustcEncodable, Default, Debug, Clone)]
+pub struct LedValue {
+    name: Option<String>,
+    rgb: [u8; 4],
 }
 
 fn respond_html(led_count: i32) -> Response<Cursor<Vec<u8>>> {
@@ -42,7 +48,7 @@ pub async fn start() -> Result<(), RrbgError> {
     let server_addr = env::var("LISTEN_ADDRESS").unwrap_or("0.0.0.0:8090".to_string());
     eprintln!("server_addr = {:?}", server_addr);
     let server = tiny_http::Server::http(server_addr).unwrap();
-    let mut current_led_values: HashMap<usize, [u8; 4]> = HashMap::new();
+    let mut current_led_values: HashMap<usize, LedValue> = HashMap::new();
     for mut request in server.incoming_requests() {
         current_led_values = match request.method() {
             Method::Post | Method::Delete => HashMap::new(),
@@ -64,12 +70,15 @@ pub async fn start() -> Result<(), RrbgError> {
                                 let mut values = HashMap::new();
                                 values.insert(
                                     extract_int(&query_params, 0, 0),
-                                    [
-                                        extract_int(&query_params, 1, 0u8),
-                                        extract_int(&query_params, 2, 0u8),
-                                        extract_int(&query_params, 3, 0u8),
-                                        extract_int(&query_params, 4, 0u8),
-                                    ],
+                                    LedValue {
+                                        rgb: [
+                                            extract_int(&query_params, 1, 0u8),
+                                            extract_int(&query_params, 2, 0u8),
+                                            extract_int(&query_params, 3, 0u8),
+                                            extract_int(&query_params, 4, 0u8),
+                                        ],
+                                        name: None,
+                                    },
                                 );
                                 LedValueRequest { values }
                             } else {
@@ -97,9 +106,9 @@ pub async fn start() -> Result<(), RrbgError> {
 }
 
 fn merge_arrays(
-    mut current_values: HashMap<usize, [u8; 4]>,
-    request_led_values: HashMap<usize, [u8; 4]>,
-) -> HashMap<usize, [u8; 4]> {
+    mut current_values: HashMap<usize, LedValue>,
+    request_led_values: HashMap<usize, LedValue>,
+) -> HashMap<usize, LedValue> {
     current_values.extend(request_led_values.into_iter());
     current_values
 }

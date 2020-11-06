@@ -1,4 +1,5 @@
 use crate::error::RrbgError;
+use crate::server::server::LedValue;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::env;
@@ -59,14 +60,14 @@ impl ControllerInstance {
     }
 
     #[cfg(target_arch = "arm")]
-    pub fn set_array(values: HashMap<usize, [u8; 4]>) -> Result<(), RrbgError> {
+    pub fn set_array(values: HashMap<usize, LedValue>) -> Result<(), RrbgError> {
         let mut controller = ControllerInstance::get_controller().unwrap();
         let mut leds = controller.leds_mut(0);
         for (index, pattern) in values.into_iter() {
-            let r = pattern[0];
-            let g = pattern[1];
-            let b = pattern[2];
-            let o = pattern[3];
+            let r = pattern.rgb[0];
+            let g = pattern.rgb[1];
+            let b = pattern.rgb[2];
+            let o = pattern.rgb[3];
             eprintln!("i:{} r:{} g:{} b:{} o:{}", index, r, g, b, o);
             if index < leds.len() {
                 leds[index] = [b, g, r, o];
@@ -82,7 +83,7 @@ impl ControllerInstance {
     }
 
     #[cfg(not(target_arch = "arm"))]
-    pub fn set_array(_values: HashMap<usize, [u8; 4]>) -> Result<(), RrbgError> {
+    pub fn set_array(_values: HashMap<usize, LedValue>) -> Result<(), RrbgError> {
         Ok(())
     }
 }
